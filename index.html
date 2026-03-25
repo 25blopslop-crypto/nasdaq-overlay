@@ -1,2 +1,86 @@
-https://25blopslop.github.io/nasdaq-overlay/
-const API_KEY = "d7255npr01qjeeefusrgd7255npr01qjeeefuss0";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NASDAQ Top 10</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: rgba(0,0,0,0.6);
+      color: white;
+    }
+    .container {
+      padding: 10px;
+      width: 300px;
+    }
+    h1 {
+      font-size: 18px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .stock {
+      display: flex;
+      justify-content: space-between;
+      margin: 4px 0;
+      padding: 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    .positive { color: #00ff9c; }
+    .negative { color: #ff4d4d; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>NASDAQ Top 10</h1>
+    <div id="stocks"></div>
+  </div>
+
+  <script>
+    const apiKey = "d7255npr01qjeeefusrgd7255npr01qjeeefuss0";
+    const symbols = [
+      "AAPL","MSFT","NVDA","AMZN","META",
+      "GOOGL","TSLA","AVGO","COST","PEP"
+    ];
+
+    async function fetchStocks() {
+      const container = document.getElementById("stocks");
+      container.innerHTML = "Loading...";
+
+      try {
+        const requests = symbols.map(symbol =>
+          fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`)
+            .then(res => res.json())
+            .then(data => ({ symbol, data }))
+        );
+
+        const results = await Promise.all(requests);
+        container.innerHTML = "";
+
+        results.forEach(({ symbol, data }) => {
+          const change = data.d;
+          const changePercent = data.dp;
+
+          const div = document.createElement("div");
+          div.className = "stock";
+
+          const changeClass = change >= 0 ? "positive" : "negative";
+
+          div.innerHTML = `
+            <span>${symbol}</span>
+            <span>$${data.c.toFixed(2)}</span>
+            <span class="${changeClass}">${change.toFixed(2)} (${changePercent.toFixed(2)}%)</span>
+          `;
+
+          container.appendChild(div);
+        });
+      } catch (err) {
+        container.innerHTML = "Error loading data";
+      }
+    }
+
+    fetchStocks();
+    setInterval(fetchStocks, 30000); // refresh every 30s
+  </script>
+</body>
+</html>
