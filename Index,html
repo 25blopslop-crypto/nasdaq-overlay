@@ -1,1 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NASDAQ Live</title>
 
+<style>
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: transparent;
+  color: white;
+}
+
+.container {
+  width: 320px;
+  padding: 12px;
+  background: rgba(0,0,0,0.55);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+}
+
+.title {
+  text-align: center;
+  font-size: 20px;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.stock {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.symbol {
+  font-weight: bold;
+}
+
+.price {
+  margin-left: auto;
+  margin-right: 10px;
+}
+
+.positive { color: #00ff9c; }
+.negative { color: #ff4d4d; }
+
+</style>
+</head>
+
+<body>
+<div class="container">
+  <div class="title">NASDAQ LIVE</div>
+  <div id="stocks">Loading...</div>
+</div>
+
+<script>
+const API_KEY = "d7255npr01qjeeefusrgd7255npr01qjeeefuss0";
+
+const symbols = [
+  "AAPL","MSFT","NVDA","AMZN","META",
+  "GOOGL","TSLA","AVGO","COST","NFLX"
+];
+
+async function loadStocks() {
+  const el = document.getElementById("stocks");
+  el.innerHTML = "Loading...";
+
+  try {
+    const data = await Promise.all(
+      symbols.map(sym =>
+        fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${API_KEY}`)
+          .then(r => r.json())
+          .then(d => ({ sym, d }))
+      )
+    );
+
+    el.innerHTML = "";
+
+    data.forEach(({ sym, d }) => {
+      const change = d.d || 0;
+      const percent = d.dp || 0;
+
+      const row = document.createElement("div");
+      row.className = "stock";
+
+      row.innerHTML = `
+        <div class="symbol">${sym}</div>
+        <div class="price">$${(d.c || 0).toFixed(2)}</div>
+        <div class="${change >= 0 ? "positive" : "negative"}">
+          ${change.toFixed(2)} (${percent.toFixed(2)}%)
+        </div>
+      `;
+
+      el.appendChild(row);
+    });
+
+  } catch {
+    el.innerHTML = "API Error";
+  }
+}
+
+loadStocks();
+setInterval(loadStocks, 10000);
+</script>
+
+</body>
+</html>
