@@ -1,86 +1,63 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>NASDAQ Top 10</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: rgba(0,0,0,0.6);
-      color: white;
-    }
-    .container {
-      padding: 10px;
-      width: 300px;
-    }
-    h1 {
-      font-size: 18px;
-      margin-bottom: 10px;
-      text-align: center;
-    }
-    .stock {
-      display: flex;
-      justify-content: space-between;
-      margin: 4px 0;
-      padding: 4px;
-      border-bottom: 1px solid rgba(255,255,255,0.2);
-    }
-    .positive { color: #00ff9c; }
-    .negative { color: #ff4d4d; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>NASDAQ Top 10</h1>
-    <div id="stocks"></div>
-  </div>
+<script>
+const API_KEY = "d7255npr01qjeeefusrgd7255npr01qjeeefuss0";
 
-  <script>
-    const apiKey = "d7255npr01qjeeefusrgd7255npr01qjeeefuss0";
-    const symbols = [
-      "AAPL","MSFT","NVDA","AMZN","META",
-      "GOOGL","TSLA","AVGO","COST","PEP"
-    ];
+async function loadTopStocks() {
+  const el = document.getElementById("stocks");
+  el.innerHTML = "Loading top movers...";
 
-    async function fetchStocks() {
-      const container = document.getElementById("stocks");
-      container.innerHTML = "Loading...";
+  try {
+    const res = await fetch(
+      `https://finnhub.io/api/v1/stock/symbol?exchange=US&token=${API_KEY}`
+    );
+    const symbols = await res.json();
 
-      try {
-        const requests = symbols.map(symbol =>
-          fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`)
-            .then(res => res.json())
-            .then(data => ({ symbol, data }))
-        );
+    // Take random sample (API limitation workaround)
+    const sample = symbols
+      .filter(s => s.type === "Common Stock")
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 20);
 
-        const results = await Promise.all(requests);
-        container.innerHTML = "";
+    const quotes = await Promise.all(
+      sample.map(s =>
+        fetch(`https://finnhub.io/api/v1/quote?symbol=${s.symbol}&token=${API_KEY}`)
+          .then(r => r.json())
+          .then(d => ({
+            symbol: s.symbol,
+            price: d.c || 0,
+            change: d.d || 0,
+            percent: d.dp || 0
+          }))
+      )
+    );
 
-        results.forEach(({ symbol, data }) => {
-          const change = data.d;
-          const changePercent = data.dp;
+    // Sort by biggest % gain
+    const top10 = quotes
+      .sort((a, b) => b.percent - a.percent)
+      .slice(0, 10);
 
-          const div = document.createElement("div");
-          div.className = "stock";
+    el.innerHTML = "";
 
-          const changeClass = change >= 0 ? "positive" : "negative";
+    top10.forEach(stock => {
+      const row = document.createElement("div");
+      row.className = "stock";
 
-          div.innerHTML = `
-            <span>${symbol}</span>
-            <span>$${data.c.toFixed(2)}</span>
-            <span class="${changeClass}">${change.toFixed(2)} (${changePercent.toFixed(2)}%)</span>
-          `;
+      row.innerHTML = `
+        <div class="symbol">${stock.symbol}</div>
+        <div class="price">$${stock.price.toFixed(2)}</div>
+        <div class="${stock.change >= 0 ? "positive" : "negative"}">
+          ${stock.change.toFixed(2)} (${stock.percent.toFixed(2)}%)
+        </div>
+      `;
 
-          container.appendChild(div);
-        });
-      } catch (err) {
-        container.innerHTML = "Error loading data";
-      }
-    }
+      el.appendChild(row);
+    });
 
-    fetchStocks();
-    setInterval(fetchStocks, 30000); // refresh every 30s
-  </script>
-</body>
-</html>
+  } catch (err) {
+    el.innerHTML = "Error loading live data";
+  }
+}
+
+// refresh every 20 seconds for more “real-time” feel
+loadTopStocks();
+setInterval(loadTopStocks, 20000);
+</script>
